@@ -32,6 +32,7 @@
 #include "RTCIceTcpCandidateType.h"
 #include "RTCIceTransportState.h"
 #include <wtf/KeyValuePair.h>
+#include <wtf/RefCounted.h>
 
 #if USE(LIBWEBRTC)
 namespace webrtc {

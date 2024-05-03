@@ -2153,7 +2153,7 @@ webkit.org/b/235885 fast/mediastream/RTCPeerConnection-setLocalDescription-offer
 webkit.org/b/235885 imported/w3c/web-platform-tests/webrtc-priority/RTCRtpParameters-encodings.html [ Failure ]
 webkit.org/b/235885 imported/w3c/web-platform-tests/mst-content-hint/RTCRtpSendParameters-degradationPreference.html [ Failure ]
 webkit.org/b/235885 webrtc/addTransceiver-then-addTrack.html [ Failure ]
-webkit.org/b/235885 webrtc/audio-video-element-playing.html [ Timeout ]
+webkit.org/b/235885 webrtc/audio-video-element-playing.html [ Failure ]
 webkit.org/b/235885 webrtc/ephemeral-certificates-and-cnames.html [ Failure ]
 webkit.org/b/235885 webrtc/filtering-ice-candidate-after-reload.html [ Failure ]
 webkit.org/b/235885 webrtc/peer-connection-track-end.html [ Failure ]

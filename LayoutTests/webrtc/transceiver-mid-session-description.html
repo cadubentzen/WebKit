@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Testing mid field on transceivers after setting session description</title>
+        <script src="../resources/testharness.js"></script>
+        <script src="../resources/testharnessreport.js"></script>
+    </head>
+    <body>
+        <audio id="audio" controls autoplay=""></audio>
+        <video id="video" controls autoplay=""></video>
+        <script>
+
+function assertTransceiversHaveMid(pc) {
+    for (let transceiver of pc.getTransceivers())
+        assert_true(!!transceiver.mid, "transceiver.mid is not null");
+}
+
+promise_test(async (t) => {
+    const pc1 = new RTCPeerConnection();
+    const pc2 = new RTCPeerConnection();
+    t.add_cleanup(() => {
+        pc1.close();
+        pc2.close();
+    });
+
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    pc1.addTrack(stream.getVideoTracks()[0], stream);
+
+    const offer = await pc1.createOffer();
+    await pc1.setLocalDescription(offer);
+    assertTransceiversHaveMid(pc1);
+
+    await pc2.setRemoteDescription(offer);
+    assertTransceiversHaveMid(pc2);
+
+    const answer = await pc2.createAnswer();
+    await pc2.setLocalDescription(answer);
+    assertTransceiversHaveMid(pc2);
+
+    await pc1.setRemoteDescription(answer);
+    assertTransceiversHaveMid(pc1);
+}, "Transceivers have mid set after setting session descriptions");
+        </script>
+    </body>
+</html>

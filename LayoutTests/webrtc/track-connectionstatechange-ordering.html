@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Testing ordering of track and connection state events</title>
+        <script src="../resources/testharness.js"></script>
+        <script src="../resources/testharnessreport.js"></script>
+    </head>
+    <body>
+        <video id="video" muted playsinline></video>
+        <script src ="routines.js"></script>
+        <script>
+promise_test((test) => {
+    if (window.testRunner)
+        testRunner.setUserMediaPermission(true);
+
+    var outgoingConnection, incomingConnection;
+    var outgoingEvents = [];
+    var incomingEvents = [];
+    return navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        return new Promise((resolve, reject) => {
+            createConnections((connection) => {
+                outgoingConnection = connection;
+                assert_equals(outgoingConnection.connectionState, "new");
+                outgoingConnection.onconnectionstatechange = () => {
+                    outgoingEvents.push(outgoingConnection.connectionState);
+                }
+                outgoingConnection.addTrack(stream.getVideoTracks()[0], stream);
+            }, (connection) => {
+                incomingConnection = connection;
+                assert_equals(incomingConnection.connectionState, "new");
+                incomingConnection.onconnectionstatechange = () => {
+                    incomingEvents.push(incomingConnection.connectionState);
+                }
+                incomingConnection.ontrack = (trackEvent) => {
+                    incomingEvents.push("track");
+                    resolve(trackEvent.streams[0]);
+                };
+            });
+            setTimeout(() => {
+                console.log(`outgoingEvents: ${outgoingEvents}`);
+                console.log(`incomingEvents: ${incomingEvents}`);
+                reject("Test timed out");
+            }, 5000);
+        });
+    }).then((stream) => {
+        video.srcObject = stream;
+        return video.play();
+    }).then(() => {
+        assert_array_equals(outgoingEvents, ["connecting", "connected"], "outgoing events");
+        assert_array_equals(incomingEvents, ["track", "connecting", "connected"], "incoming events");
+    });
+}, "Checking track event is emitted before connectionstatechange events");
+        </script>
+    </body>
+</html>

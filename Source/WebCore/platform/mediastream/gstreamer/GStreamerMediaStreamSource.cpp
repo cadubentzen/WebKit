@@ -191,12 +191,6 @@ public:
             return GST_PAD_PROBE_OK;
         }), nullptr, nullptr);
 #endif
-
-        auto& trackSource = m_track.source();
-        if (!trackSource.isIncomingAudioSource() && !trackSource.isIncomingVideoSource())
-            return;
-
-        connectIncomingTrack();
     }
 
     void connectIncomingTrack()
@@ -386,6 +380,11 @@ public:
     void trackMutedChanged(MediaStreamTrackPrivate&) final { };
     void trackSettingsChanged(MediaStreamTrackPrivate&) final { };
     void readyStateChanged(MediaStreamTrackPrivate&) final { };
+
+    void dataFlowStarted(MediaStreamTrackPrivate&) final
+    {
+        connectIncomingTrack();
+    }
 
     void trackEnded(MediaStreamTrackPrivate&) final
     {
@@ -1088,13 +1087,6 @@ void webkitMediaStreamSrcSignalEndOfStream(WebKitMediaStreamSrc* self)
 void webkitMediaStreamSrcCharacteristicsChanged(WebKitMediaStreamSrc* self)
 {
     GST_DEBUG_OBJECT(self, "MediaStream characteristics changed");
-    for (auto& source : self->priv->sources) {
-        auto& trackSource = source->track().source();
-        if (!trackSource.isIncomingAudioSource() && !trackSource.isIncomingVideoSource())
-            continue;
-
-        source->connectIncomingTrack();
-    }
 }
 
 void webkitMediaStreamSrcSetStream(WebKitMediaStreamSrc* self, MediaStreamPrivate* stream, bool isVideoPlayer)

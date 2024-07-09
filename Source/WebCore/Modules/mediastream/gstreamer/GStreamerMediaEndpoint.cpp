@@ -656,24 +656,6 @@ void GStreamerMediaEndpoint::doSetRemoteDescription(const RTCSessionDescription&
         if (protectedThis->isStopped())
             return;
 
-        // To implement https://w3c.github.io/webrtc-pc/#set-remote-description, we need to have the set of transceivers
-        // created after applying the remote offer. However, as of GStreamer 1.24.4, the transceivers in webrtcbin are only
-        // created once an answer is created, which only depends on having the remote offer set beforehand.
-        // Therefore, to force having the transceivers created, we trigger answer creation early, but we do not use the
-        // result or expose the answer to JS yet. It's ok to do so because the only pre-requisite to creating an answer
-        // is having the remote offer applied and we have it at this point. This will trigger the creation of transceivers
-        // internally in webrtcbin, and is also idempotent, so it's ok to be called again by the application.
-        // Additionally, awaiting on the "create-answer" promise here is acceptable because it executes quickly and
-        // doesn't block internally.
-        // FIXME: make this version-dependent once this is fixed in a released version of GStreamer.
-        GstWebRTCSignalingState signalingState;
-        g_object_get(m_webrtcBin.get(), "signaling-state", &signalingState, nullptr);
-        if (signalingState == GST_WEBRTC_SIGNALING_STATE_HAVE_REMOTE_OFFER) {
-            GRefPtr<GstPromise> promise = adoptGRef(gst_promise_new());
-            g_signal_emit_by_name(m_webrtcBin.get(), "create-answer", nullptr, promise.get());
-            gst_promise_wait(promise.get());
-        }
-
         processSDPMessage(&message, [this](unsigned, const char* mid, const auto* media) {
             const char* mediaType = gst_sdp_media_get_media(media);
             m_mediaForMid.set(String::fromLatin1(mid), g_str_equal(mediaType, "audio") ? RealtimeMediaSource::Type::Audio : RealtimeMediaSource::Type::Video);
@@ -1773,19 +1755,9 @@ void GStreamerMediaEndpoint::collectTransceivers()
             GST_WARNING_OBJECT(m_pipeline.get(), "SDP media for transceiver %u not found, skipping registration", mLineIndex);
             continue;
         }
-        auto transceiverBackend = WTF::makeUnique<GStreamerRtpTransceiverBackend>(WTFMove(current));
-        // As of GStreamer 1.24.4, webrtcbin's transceivers only have the "mid" property set after the signaling state
-        // is STABLE. However, we need to use the transceiver mid property when signaling is still HAVE_REMOTE_OFFER.
-        // For that, we set the mid from the SDP directly as an alternative for using it in this early stage.
-        // FIXME: make this version-dependent when it's fixed in a released version of GStreamer.
-        if (!mid && signalingState == GST_WEBRTC_SIGNALING_STATE_HAVE_REMOTE_OFFER) {
-            mid.outPtr() = g_strdup(gst_sdp_media_get_attribute_val(media, "mid"));
-            GST_TRACE_OBJECT(m_webrtcBin.get(), "mid from SDP: %s", GST_STR_NULL(mid.get()));
-            transceiverBackend->setMidFromSDP(String::fromUTF8(mid.get()));
-        }
         if (!mid)
             continue;
-        m_peerConnectionBackend.newRemoteTransceiver(WTFMove(transceiverBackend), m_mediaForMid.get(String::fromUTF8(mid.get())), trackIdFromSDPMedia(*media));
+        m_peerConnectionBackend.newRemoteTransceiver(WTF::makeUnique<GStreamerRtpTransceiverBackend>(WTFMove(current)), m_mediaForMid.get(String::fromUTF8(mid.get())), trackIdFromSDPMedia(*media));
     }
 }
 

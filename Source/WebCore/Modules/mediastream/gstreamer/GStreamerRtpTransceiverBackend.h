@@ -23,7 +23,6 @@
 
 #include "GRefPtrGStreamer.h"
 #include "GStreamerRtpSenderBackend.h"
-#include "GUniquePtrGStreamer.h"
 #include "RTCRtpTransceiverBackend.h"
 
 namespace WebCore {
@@ -42,8 +41,6 @@ public:
 
     void tearDown();
 
-    void setMidFromSDP(String&&);
-
 private:
     RTCRtpTransceiverDirection direction() const final;
     std::optional<RTCRtpTransceiverDirection> currentDirection() const final;
@@ -55,7 +52,6 @@ private:
 
     GRefPtr<GstWebRTCRTPTransceiver> m_rtcTransceiver;
     bool m_isStopped { false };
-    String m_midFromSDP;
 };
 
 } // namespace WebCore

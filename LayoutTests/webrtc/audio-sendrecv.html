@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Testing RTCPeerConnection with sendrecv audio</title>
+    <script src="../resources/testharness.js"></script>
+    <script src="../resources/testharnessreport.js"></script>
+    <script src ="routines.js"></script>
+
+    <audio id="audio1" controls autoplay=""></audio>
+    <audio id="audio2" controls autoplay=""></audio>
+
+    <script>
+    let audio1 = document.querySelector("#audio1");
+    let audio2 = document.querySelector("#audio2");
+
+    promise_test(async (test) => {
+        if (window.testRunner)
+            testRunner.setUserMediaPermission(true);
+
+        let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        await new Promise((resolve, reject) => {
+            let trackCount = 0;
+            createConnections((firstConnection) => {
+                firstConnection.addTrack(stream.getAudioTracks()[0], stream);
+                firstConnection.ontrack = (event) => {
+                    audio1.srcObject = event.streams[0];
+                    if (++trackCount >= 2)
+                        resolve();
+                };
+            }, (secondConnection) => {
+                secondConnection.addTrack(stream.getAudioTracks()[0], stream);
+                secondConnection.ontrack = (event) => {
+                    audio2.srcObject = event.streams[0];
+                    if (++trackCount >= 2)
+                        resolve();
+                };
+            });
+            setTimeout(() => reject("Test timed out"), 5000);
+        });
+
+        await audio1.play();
+        await audio2.play();
+    }, "Basic sendrecv remote audio playback");
+    </script>
+</head>
+<body>
+</body>
+</html>

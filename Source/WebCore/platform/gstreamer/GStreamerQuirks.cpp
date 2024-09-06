@@ -38,6 +38,7 @@
 #include <wtf/OptionSet.h>
 #include <wtf/TZoneMallocInlines.h>
 #include <wtf/text/StringView.h>
+#include <wtf/FileSystem.h>
 
 namespace WebCore {
 
@@ -278,6 +279,48 @@ bool GStreamerQuirksManager::shouldParseIncomingLibWebRTCBitStream() const
             return false;
     }
     return true;
+}
+
+void GStreamerQuirksManager::loadExtraSystemPlugins() const
+{
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [&]() {
+        auto systemPluginsPath = g_getenv("GST_PLUGIN_SYSTEM_PATH_1_0");
+        if (!systemPluginsPath)
+            systemPluginsPath = g_getenv("GST_PLUGIN_SYSTEM_PATH");
+        if (!systemPluginsPath) {
+            GST_ERROR("Unable to load extra system plugins without GST_PLUGIN_SYSTEM_PATH_1_0 or GST_PLUGIN_SYSTEM_PATH set.");
+            return;
+        }
+
+        auto loadPlugin = [&](const String& pluginName) {
+            auto plugin = adoptGRef(gst_registry_find_plugin(gst_registry_get(), pluginName.utf8().data()));
+            if (plugin) {
+                GST_ERROR("Plugin %s already in the registry. Will not load a duplicate.", pluginName.utf8().data());
+                return;
+            }
+
+            // FIXME: It would be nice to have some helpers from GStreamer here to avoid doing this, but I didn't find any unless registry is enabled.
+            #if !OS(LINUX)
+                static_assert(false, "Extra loading of plugins only tested on Linux");
+            #endif
+            auto sharedLibraryFilename = makeString("lib"_s, pluginName, ".so"_s);
+            auto pluginPath = FileSystem::pathByAppendingComponent(span(systemPluginsPath), sharedLibraryFilename);
+            GST_DEBUG("Loading %s", pluginPath.utf8().data());
+
+            GUniqueOutPtr<GError> error;
+            plugin = adoptGRef(gst_plugin_load_file(pluginPath.utf8().data(), &error.outPtr()));
+            if (!plugin)
+                GST_ERROR("Failed to load plugin %s with error '%s'", pluginName.utf8().data(), error ? error->message : "unknown error");
+        };
+
+        for (auto& quirk : m_quirks) {
+            for (auto& pluginName : quirk->extraSystemPlugins())
+                loadPlugin(pluginName);
+        }
+        // FIXME: remove this. Only for testing on Desktop with gst-full without any decoders, but use VA-API decoders from the system.
+        loadPlugin("gstva"_s);
+    });
 }
 
 #undef GST_CAT_DEFAULT

@@ -63,6 +63,7 @@ public:
     virtual Vector<String> disallowedWebAudioDecoders() const { return { }; }
     virtual unsigned getAdditionalPlaybinFlags() const { return 0; }
     virtual bool shouldParseIncomingLibWebRTCBitStream() const { return true; }
+    virtual Vector<String> extraSystemPlugins() const { return { }; }
 };
 
 class GStreamerHolePunchQuirk : public GStreamerQuirkBase {
@@ -107,6 +108,8 @@ public:
     unsigned getAdditionalPlaybinFlags() const;
 
     bool shouldParseIncomingLibWebRTCBitStream() const;
+
+    void loadExtraSystemPlugins() const;
 
 private:
     GStreamerQuirksManager(bool, bool);

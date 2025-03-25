@@ -191,6 +191,18 @@ GStreamerInternalVideoDecoder::GStreamerInternalVideoDecoder(const String& codec
             gst_caps_set_simple(m_inputCaps.get(), "codec_data", GST_TYPE_BUFFER, codecData.get(), nullptr);
         if (!gst_element_factory_can_sink_all_caps(factory, m_inputCaps.get()))
             parser = "h265parse"_s;
+    } else if (codecName.startsWith("vvc1"_s)) {
+        m_inputCaps = adoptGRef(gst_caps_new_simple("video/x-h266", "stream-format", G_TYPE_STRING, "vvc1", "alignment", G_TYPE_STRING, "au", nullptr));
+        if (auto codecData = wrapSpanData(config.description))
+            gst_caps_set_simple(m_inputCaps.get(), "codec_data", GST_TYPE_BUFFER, codecData.get(), nullptr);
+        if (!gst_element_factory_can_sink_all_caps(factory, m_inputCaps.get()))
+            parser = "h266parse"_s;
+    } else if (codecName.startsWith("vvi1"_s)) {
+        m_inputCaps = adoptGRef(gst_caps_new_simple("video/x-h266", "stream-format", G_TYPE_STRING, "vvi1", "alignment", G_TYPE_STRING, "au", nullptr));
+        if (auto codecData = wrapSpanData(config.description))
+            gst_caps_set_simple(m_inputCaps.get(), "codec_data", GST_TYPE_BUFFER, codecData.get(), nullptr);
+        if (!gst_element_factory_can_sink_all_caps(factory, m_inputCaps.get()))
+            parser = "h266parse"_s;
     } else {
         WTFLogAlways("Codec %s not wired in yet", codecName.ascii().data());
         return;

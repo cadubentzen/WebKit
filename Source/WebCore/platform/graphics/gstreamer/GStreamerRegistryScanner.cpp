@@ -499,6 +499,21 @@ void GStreamerRegistryScanner::initializeDecoders(const GStreamerRegistryScanner
         m_decoderCodecMap.add("hev1*"_s, h265DecoderAvailable);
     }
 
+    auto h266DecoderAvailable = factories.hasElementForMediaType(ElementFactories::Type::VideoDecoder, "video/x-h266"_s, ElementFactories::CheckHardwareClassifier::Yes);
+    auto h266AllFormatsDecoderAvailable = GStreamerRegistryScanner::RegistryLookupResult::merge(
+        factories.hasElementForMediaType(ElementFactories::Type::VideoDecoder, "video/x-h266, stream-format=(string)byte-stream"_s, ElementFactories::CheckHardwareClassifier::Yes),
+        GStreamerRegistryScanner::RegistryLookupResult::merge(
+            factories.hasElementForMediaType(ElementFactories::Type::VideoDecoder, "video/x-h266, stream-format=(string)vvc1"_s, ElementFactories::CheckHardwareClassifier::Yes),
+            factories.hasElementForMediaType(ElementFactories::Type::VideoDecoder, "video/x-h266, stream-format=(string)vvi1"_s, ElementFactories::CheckHardwareClassifier::Yes)));
+    auto needsH266Parse = h266DecoderAvailable != h266AllFormatsDecoderAvailable;
+
+    if (h266DecoderAvailable && (!needsH266Parse || factories.hasElementForMediaType(ElementFactories::Type::VideoParser, "video/x-h266"_s))) {
+        shouldAddMP4Container = true;
+        m_decoderCodecMap.add("x-h266"_s, h266DecoderAvailable);
+        m_decoderCodecMap.add("vvc1*"_s, h266DecoderAvailable);
+        m_decoderCodecMap.add("vvi1*"_s, h266DecoderAvailable);
+    }
+
     if (shouldAddMP4Container) {
         m_decoderMimeTypeSet.add("video/mp4"_s);
         m_decoderMimeTypeSet.add("video/x-m4v"_s);

@@ -86,6 +86,7 @@
 #include <glib/gi18n-lib.h>
 #include <jsc/JSCContextPrivate.h>
 #include <libsoup/soup.h>
+#include <wtf/Assertions.h>
 #include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/TZoneMallocInlines.h>
@@ -541,6 +542,7 @@ GRefPtr<WebKitOptionMenu> WebKitWebViewClient::showOptionMenu(WebKitPopupMenu& p
     GRefPtr<WebKitOptionMenu> menu = adoptGRef(webkitOptionMenuCreate(popupMenu, items, selectedIndex));
     if (webkitWebViewShowOptionMenu(WEBKIT_WEB_VIEW(m_webView), rect, menu.get()))
         return menu;
+    WTFLogAlways("WARNING: A <select> element was interacted with, but no popup menu was shown. WPE does not provide a default popup menu. Connect a handler to the WebKitWebView::show-option-menu signal to display select options.");
     return nullptr;
 }
 
@@ -3148,8 +3150,10 @@ void webkitWebViewPopulateContextMenu(WebKitWebView* webView, const Vector<WebCo
         nullptr,
 #endif
         hitTestResult.get(), &returnValue);
-    if (!returnValue)
+    if (!returnValue) {
+        WTFLogAlways("WARNING: A context menu was requested, but no menu was shown. WPE does not provide a default context menu. Connect a handler to the WebKitWebView::context-menu signal to display context menu options.");
         return;
+    }
 
     webkitContextMenuSetPage(contextMenu.get(), &getPage(webView));
 

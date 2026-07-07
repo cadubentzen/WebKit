@@ -1173,6 +1173,12 @@ Vector<uint8_t> GstMappedBuffer::createVector() const
 
 bool isGStreamerPluginAvailable(ASCIILiteral name)
 {
+    // This can be reached before any other GStreamer usage, e.g. via WebRTCProvider::webRTCAvailable(),
+    // in which case the registry (and our debug category) would not be initialized yet.
+    if (isInWebProcess())
+        ensureGStreamerInitialized();
+    else
+        ensureGStreamerInitializedNonWebProcess();
     GRefPtr<GstPlugin> plugin = adoptGRef(gst_registry_find_plugin(gst_registry_get(), name.characters()));
     if (!plugin)
         GST_WARNING("Plugin %s not found. Please check your GStreamer installation", name.characters());

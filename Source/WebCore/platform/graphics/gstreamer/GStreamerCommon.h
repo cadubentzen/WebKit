@@ -295,6 +295,15 @@ bool gstElementFactoryEquals(GstElement*, ASCIILiteral name);
 GstElement* createAutoAudioSink(const String& role);
 GstElement* createPlatformAudioSink(const String& role, const String& deviceId = { }, const GRefPtr<GstDevice>& = { });
 
+#if ENABLE(MEDIA_STREAM)
+// Resolves an audio output device id ("default" or a persistent id) to its resolved persistent id
+// and matching GstDevice.
+std::pair<String, GRefPtr<GstDevice>> gstGetAudioOutputDevice(const String& deviceId);
+#endif
+// Reconfigures an existing audio sink element (recursing into bins) to render to the given GstDevice.
+// Returns true if a sink was reconfigured.
+bool gstSetAudioSinkDevice(GstElement* audioSink, const GRefPtr<GstDevice>&, const String& deviceId);
+
 bool webkitGstSetElementStateSynchronously(GstElement*, GstState, Function<bool(GstMessage*)>&& = [](GstMessage*) -> bool {
     return true;
 });

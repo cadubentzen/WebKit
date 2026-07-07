@@ -37,6 +37,8 @@ public:
     WEBCORE_EXPORT void start(Function<void(Function<void()>&&)>&& dispatchToRenderThread, CompletionHandler<void(bool)>&&) final;
     WEBCORE_EXPORT void stop(CompletionHandler<void(bool)>&&) final;
 
+    void setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&&) final;
+
     bool isPlaying() override { return m_isPlaying; }
     unsigned framesPerBuffer() const final;
 
@@ -54,12 +56,21 @@ private:
     void notifyStartupResult(bool);
     void notifyStopResult(bool);
 
+    // With SinkDeviceFallback::Disallowed, returns nullptr instead of falling back to the default
+    // output device when the configured device is unavailable.
+    enum class SinkDeviceFallback : bool { Disallowed, Allowed };
+    GRefPtr<GstElement> createAudioSinkElement(SinkDeviceFallback);
+    // On failure the current sink stays in place. The pipeline must not be PLAYING.
+    bool replaceAudioSink();
+
     RefPtr<AudioBus> m_renderBus;
 
     bool m_isPlaying { false };
     bool m_audioSinkAvailable { false };
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstElement> m_src;
+    GRefPtr<GstElement> m_queue;
+    GRefPtr<GstElement> m_audioSink;
     CompletionHandler<void(bool)> m_startupCompletionHandler;
     CompletionHandler<void(bool)> m_stopCompletionHandler;
 };

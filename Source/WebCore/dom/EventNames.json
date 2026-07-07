@@ -240,6 +240,7 @@
     "shippingoptionchange": { },
     "show": { },
     "signalingstatechange": { },
+    "sinkchange": { },
     "slotchange": { },
     "soundend": { },
     "soundstart": { },

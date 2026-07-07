@@ -755,6 +755,21 @@ AttachmentWideLayoutEnabled:
     WebCore:
       default: false
 
+AudioContextSetSinkIdEnabled:
+  type: bool
+  status: testable
+  category: media
+  humanReadableName: "AudioContext setSinkId"
+  humanReadableDescription: "Enable AudioContext.setSinkId() for audio output device selection"
+  condition: ENABLE(WEB_AUDIO)
+  defaultValue:
+    WebKitLegacy:
+      default: false
+    WebKit:
+      default: false
+    WebCore:
+      default: false
+
 AudioControlsScaleWithPageZoom:
   type: bool
   status: embedder

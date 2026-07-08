@@ -87,6 +87,8 @@ private:
     void setSceneIdentifier(const String&) final;
 #endif
 
+    void setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&&) final;
+
     Markable<RemoteAudioDestinationIdentifier> m_destinationID; // Call destinationID() getter to make sure the destinationID is valid.
 
     static uint8_t s_realtimeThreadCount;

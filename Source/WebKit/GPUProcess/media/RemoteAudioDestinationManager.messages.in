@@ -29,11 +29,12 @@
     EnabledBy=WebAudioEnabled
 ]
 messages -> RemoteAudioDestinationManager {
-    CreateAudioDestination(WebKit::RemoteAudioDestinationIdentifier identifier, String inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore renderSemaphore, WebCore::SharedMemory::Handle frameCount) -> (uint64_t audioUnitLatency)
+    CreateAudioDestination(WebKit::RemoteAudioDestinationIdentifier identifier, String inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore renderSemaphore, WebCore::SharedMemory::Handle frameCount, String outputDeviceId, bool isSilent) -> (uint64_t audioUnitLatency)
     DeleteAudioDestination(WebKit::RemoteAudioDestinationIdentifier identifier)
 
     StartAudioDestination(WebKit::RemoteAudioDestinationIdentifier identifier) -> (bool isPlaying, uint64_t audioUnitLatency)
     StopAudioDestination(WebKit::RemoteAudioDestinationIdentifier identifier) -> (bool isPlaying)
+    [EnabledBy=AudioContextSetSinkIdEnabled] SetSinkId(WebKit::RemoteAudioDestinationIdentifier identifier, String persistentDeviceId, bool isSilent) -> (bool success)
 #if PLATFORM(COCOA)
     AudioSamplesStorageChanged(WebKit::RemoteAudioDestinationIdentifier identifier, struct WebKit::ConsumerSharedCARingBufferHandle storageHandle)
 #endif

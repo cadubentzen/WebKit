@@ -55,8 +55,6 @@ struct AudioDestinationCreationOptions {
 #if PLATFORM(IOS_FAMILY)
     const String& sceneIdentifier;
 #endif
-    // Output device id (empty means the default device) and silent-sink selection. Only honored by
-    // the GStreamer port. See AudioContext.setSinkId().
     String outputDeviceId { };
     bool isSilent { false };
 };
@@ -76,10 +74,9 @@ public:
     virtual void stop(CompletionHandler<void(bool)>&& = [](bool) { }) = 0;
     virtual bool isPlaying() = 0;
 
-    // Switches the output device at runtime. persistentDeviceId is a port-specific device id (empty
-    // means the default device); isSilent requests a sink that drops audio. The completion handler
-    // reports whether the device was acquired; on failure the previous routing stays in effect.
-    // Only the GStreamer port implements this; other ports report success without switching.
+    // Switches the output device at runtime; isSilent requests a sink that drops the rendered
+    // audio. The completion handler reports whether the device was acquired; on failure the
+    // previous routing stays in effect.
     virtual void setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&& completionHandler)
     {
         UNUSED_PARAM(persistentDeviceId);

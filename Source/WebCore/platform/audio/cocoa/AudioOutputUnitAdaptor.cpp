@@ -29,6 +29,7 @@
 #if ENABLE(WEB_AUDIO)
 
 #include "Logging.h"
+#include <pal/cf/CoreAudioExtras.h>
 #include <pal/cf/AudioToolboxSoftLink.h>
 
 namespace WebCore {
@@ -50,12 +51,17 @@ OSStatus AudioOutputUnitAdaptor::start()
     auto result = PAL::AudioOutputUnitStart(m_outputUnit);
     if (result != noErr)
         WTFLogAlways("ERROR: AudioOutputUnitStart() call failed with error code: %ld", static_cast<long>(result));
+    else
+        m_isRunning = true;
     return result;
 }
 
 OSStatus AudioOutputUnitAdaptor::stop()
 {
-    return PAL::AudioOutputUnitStop(m_outputUnit);
+    auto result = PAL::AudioOutputUnitStop(m_outputUnit);
+    if (result == noErr)
+        m_isRunning = false;
+    return result;
 }
 
 // DefaultOutputUnit callback
@@ -69,7 +75,33 @@ OSStatus AudioOutputUnitAdaptor::inputProc(void* userData, AudioUnitRenderAction
         hostTime = timeStamp->mHostTime;
     }
 
-    return adaptor->m_audioUnitRenderer.render(sampleTime, hostTime, numberOfFrames, ioData);
+    auto result = adaptor->m_audioUnitRenderer.render(sampleTime, hostTime, numberOfFrames, ioData);
+
+    if (adaptor->m_isSilentSink.load(std::memory_order_relaxed)) {
+        for (auto& buffer : PAL::span(*ioData))
+            zeroSpan(PAL::mutableSpan<uint8_t>(buffer));
+    }
+
+    return result;
+}
+
+bool AudioOutputUnitAdaptor::setOutputDevice(const String& persistentDeviceId)
+{
+    if (persistentDeviceId == m_outputDevicePersistentId)
+        return true;
+
+    // The output unit cannot be reconfigured while running. It may be rendering for other
+    // AudioContexts on the same sink, so restart it right away on any outcome.
+    bool wasRunning = m_isRunning;
+    if (wasRunning && stop() != noErr)
+        return false;
+
+    bool success = applyOutputDevice(persistentDeviceId);
+
+    if (wasRunning && start() != noErr)
+        success = false;
+
+    return success;
 }
 
 size_t AudioOutputUnitAdaptor::outputLatency() const

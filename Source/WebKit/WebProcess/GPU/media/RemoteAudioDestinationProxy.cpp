@@ -138,7 +138,7 @@ IPC::Connection* RemoteAudioDestinationProxy::connection()
         if (frameCount)
             frameCountHandle = frameCount->createHandle(WebCore::SharedMemory::Protection::ReadWrite);
         RELEASE_ASSERT(frameCountHandle.has_value());
-        gpuProcessConnection->connection().sendWithAsyncReply(Messages::RemoteAudioDestinationManager::CreateAudioDestination(*m_destinationID, m_inputDeviceId, m_numberOfInputChannels, m_outputBus->numberOfChannels(), sampleRate(), m_remoteSampleRate, m_renderSemaphore, WTF::move(*frameCountHandle)), [protectedThis = Ref { *this }](size_t latency) {
+        gpuProcessConnection->connection().sendWithAsyncReply(Messages::RemoteAudioDestinationManager::CreateAudioDestination(*m_destinationID, m_inputDeviceId, m_numberOfInputChannels, m_outputBus->numberOfChannels(), sampleRate(), m_remoteSampleRate, m_renderSemaphore, WTF::move(*frameCountHandle), outputDeviceId(), isSilent()), [protectedThis = Ref { *this }](size_t latency) {
             protectedThis->m_audioUnitLatency = latency;
         }, 0);
 
@@ -263,6 +263,27 @@ void RemoteAudioDestinationProxy::setSceneIdentifier(const String& sceneIdentifi
         gpuProcessConnection->connection().send(Messages::RemoteAudioDestinationManager::SetSceneIdentifier { *m_destinationID, m_sceneIdentifier }, 0);
 }
 #endif
+
+void RemoteAudioDestinationProxy::setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&& completionHandler)
+{
+    ASSERT(isMainRunLoop());
+
+    RefPtr connection = this->connection();
+    if (!connection) {
+        RunLoop::currentSingleton().dispatch([completionHandler = WTF::move(completionHandler)]() mutable {
+            completionHandler(false);
+        });
+        return;
+    }
+
+    // Only commit the values on success so a recreation of the remote destination (e.g. after a
+    // GPU process crash) keeps the routing that is actually in effect.
+    connection->sendWithAsyncReply(Messages::RemoteAudioDestinationManager::SetSinkId(*m_destinationID, persistentDeviceId, isSilent), [protectedThis = Ref { *this }, persistentDeviceId, isSilent, completionHandler = WTF::move(completionHandler)](bool success) mutable {
+        if (success)
+            protectedThis->setSinkSelection(persistentDeviceId, isSilent);
+        completionHandler(success);
+    });
+}
 
 void RemoteAudioDestinationProxy::gpuProcessConnectionDidClose(GPUProcessConnection& oldConnection)
 {

@@ -63,6 +63,8 @@ private:
     void setSceneIdentifier(const String&) override;
 #endif
 
+    void setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&&) final;
+
     void startRendering(CompletionHandler<void(bool)>&&) override;
     void stopRendering(CompletionHandler<void(bool)>&&) override;
     MediaTime outputLatency() const final;

@@ -769,6 +769,7 @@ AudioContextSetSinkIdEnabled:
       default: false
     WebCore:
       default: false
+  sharedPreferenceForWebProcess: true
 
 AudioControlsScaleWithPageZoom:
   type: bool

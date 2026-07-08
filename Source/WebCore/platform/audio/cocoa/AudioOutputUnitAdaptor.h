@@ -28,6 +28,8 @@
 #if ENABLE(WEB_AUDIO)
 
 #include <AudioUnit/AudioUnit.h>
+#include <atomic>
+#include <wtf/text/WTFString.h>
 
 OBJC_CLASS CASpatialAudioExperience;
 
@@ -50,6 +52,15 @@ public:
 
     WEBCORE_EXPORT size_t outputLatency() const;
 
+    // Routes the output to the audio device with the given persistent id (empty means the default
+    // output device), restarting the unit if it is running. Returns false if the device could not
+    // be acquired, in which case the previous routing stays in effect.
+    WEBCORE_EXPORT bool setOutputDevice(const String& persistentDeviceId);
+    const String& outputDevicePersistentId() const LIFETIME_BOUND { return m_outputDevicePersistentId; }
+
+    // A silent sink keeps rendering, so currentTime keeps progressing, but drops the output.
+    void setIsSilent(bool isSilent) { m_isSilentSink.store(isSilent, std::memory_order_relaxed); }
+
 #if HAVE(SPATIAL_AUDIO_EXPERIENCE)
     WEBCORE_EXPORT void setSpatialAudioExperience(CASpatialAudioExperience *);
 #endif
@@ -57,8 +68,23 @@ public:
 private:
     static OSStatus inputProc(void* userData, AudioUnitRenderActionFlags*, const AudioTimeStamp*, UInt32 busNumber, UInt32 numberOfFrames, AudioBufferList* ioData);
 
+    bool applyOutputDevice(const String& persistentDeviceId);
+#if PLATFORM(MAC)
+    bool createOutputUnit();
+#endif
+
     AudioUnit m_outputUnit;
     AudioUnitRenderer& m_audioUnitRenderer;
+
+    String m_outputDevicePersistentId;
+    bool m_isRunning { false };
+    std::atomic<bool> m_isSilentSink { false };
+#if PLATFORM(MAC)
+    float m_hardwareSampleRate { 0 };
+    unsigned m_numberOfOutputChannels { 0 };
+    // CoreAudio device id matching m_outputDevicePersistentId (0 means the default output device).
+    uint32_t m_outputDeviceID { 0 };
+#endif
 };
 
 } // namespace WebCore

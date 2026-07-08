@@ -78,6 +78,11 @@ AudioDestinationCocoa::AudioDestinationCocoa(const CreationOptions& options)
 {
     m_audioOutputUnitAdaptor.configure(hardwareSampleRate(), options.numberOfOutputChannels);
 
+    // On failure keep rendering to the default output device.
+    if (!options.outputDeviceId.isEmpty())
+        m_audioOutputUnitAdaptor.setOutputDevice(options.outputDeviceId);
+    m_audioOutputUnitAdaptor.setIsSilent(options.isSilent);
+
 #if PLATFORM(IOS_FAMILY)
     setSceneIdentifier(options.sceneIdentifier);
 #endif
@@ -126,7 +131,19 @@ OSStatus AudioDestinationCocoa::render(double sampleTime, uint64_t hostTime, UIn
     }
     auto framesToRender = pullRendered(numberOfFrames);
     bool success = AudioDestinationResampler::render(sampleTime, MonotonicTime::fromMachAbsoluteTime(hostTime), framesToRender);
+
     return success ? noErr : -1;
+}
+
+void AudioDestinationCocoa::setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&& completionHandler)
+{
+    ASSERT(isMainThread());
+
+    bool success = m_audioOutputUnitAdaptor.setOutputDevice(persistentDeviceId);
+    if (success)
+        m_audioOutputUnitAdaptor.setIsSilent(isSilent);
+
+    completionHandler(success);
 }
 
 MediaTime AudioDestinationCocoa::outputLatency() const

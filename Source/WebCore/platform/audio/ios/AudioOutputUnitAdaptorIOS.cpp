@@ -99,7 +99,14 @@ void AudioOutputUnitAdaptor::configure(float hardwareSampleRate, unsigned number
     AudioSession::singleton().setPreferredBufferSize(kPreferredBufferSize);
 }
 
+bool AudioOutputUnitAdaptor::applyOutputDevice(const String& persistentDeviceId)
+{
+    // The system manages the output route through the shared audio session, like
+    // HTMLMediaElement.setSinkId(), which also resolves without rerouting on iOS family.
+    m_outputDevicePersistentId = persistentDeviceId;
+    return true;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(WEB_AUDIO) && PLATFORM(IOS_FAMILY)
-

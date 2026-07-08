@@ -74,10 +74,11 @@ public:
 private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
-    void createAudioDestination(RemoteAudioDestinationIdentifier, const String& inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore&& renderSemaphore, WebCore::SharedMemoryHandle&&, CompletionHandler<void(uint64_t)>&&);
+    void createAudioDestination(RemoteAudioDestinationIdentifier, const String& inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore&& renderSemaphore, WebCore::SharedMemoryHandle&&, const String& outputDeviceId, bool isSilent, CompletionHandler<void(uint64_t)>&&);
     void deleteAudioDestination(RemoteAudioDestinationIdentifier);
     void startAudioDestination(RemoteAudioDestinationIdentifier, CompletionHandler<void(bool, uint64_t)>&&);
     void stopAudioDestination(RemoteAudioDestinationIdentifier, CompletionHandler<void(bool)>&&);
+    void setSinkId(RemoteAudioDestinationIdentifier, const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&&);
 #if PLATFORM(COCOA)
     void audioSamplesStorageChanged(RemoteAudioDestinationIdentifier, ConsumerSharedCARingBuffer::Handle&&);
 #endif

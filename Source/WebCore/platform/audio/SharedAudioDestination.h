@@ -58,6 +58,7 @@ private:
 #if PLATFORM(IOS_FAMILY)
     void setSceneIdentifier(const String&) final;
 #endif
+    void setSinkId(const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&&) final;
 
     void setIsPlaying(bool);
 
@@ -66,6 +67,7 @@ private:
     Function<void(Function<void()>&&)> m_dispatchToRenderThread WTF_GUARDED_BY_LOCK(m_dispatchToRenderThreadLock);
 
     bool m_isPlaying { false };
+    AudioDestinationCreationFunction m_ensureFunction;
     Ref<SharedAudioDestinationAdapter> m_outputAdapter;
 };
 

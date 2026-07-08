@@ -60,7 +60,7 @@ class RemoteAudioDestination final
 {
     WTF_MAKE_TZONE_ALLOCATED_INLINE(RemoteAudioDestination);
 public:
-    RemoteAudioDestination(GPUConnectionToWebProcess& connection, const String& inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore&& renderSemaphore)
+    RemoteAudioDestination(GPUConnectionToWebProcess& connection, const String& inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore&& renderSemaphore, const String& outputDeviceId, bool isSilent)
         : m_renderSemaphore(WTF::move(renderSemaphore))
 #if !RELEASE_LOG_DISABLED
         , m_logger(connection.logger())
@@ -75,6 +75,14 @@ public:
         ALWAYS_LOG(LOGIDENTIFIER);
 #if PLATFORM(COCOA)
         m_audioOutputUnitAdaptor.configure(hardwareSampleRate, numberOfOutputChannels);
+
+        // On failure keep rendering to the default output device.
+        if (!outputDeviceId.isEmpty())
+            m_audioOutputUnitAdaptor.setOutputDevice(outputDeviceId);
+        m_audioOutputUnitAdaptor.setIsSilent(isSilent);
+#else
+        UNUSED_PARAM(outputDeviceId);
+        UNUSED_PARAM(isSilent);
 #endif
     }
 
@@ -134,6 +142,20 @@ public:
 #if HAVE(SPATIAL_AUDIO_EXPERIENCE)
     void setPrefersSpatialAudioExperience(bool value) { m_prefersSpatialAudioExperience = value; }
 #endif
+
+    bool setSinkId(const String& persistentDeviceId, bool isSilent)
+    {
+#if PLATFORM(COCOA)
+        bool success = m_audioOutputUnitAdaptor.setOutputDevice(persistentDeviceId);
+        if (success)
+            m_audioOutputUnitAdaptor.setIsSilent(isSilent);
+        return success;
+#else
+        UNUSED_PARAM(persistentDeviceId);
+        UNUSED_PARAM(isSilent);
+        return true;
+#endif
+    }
 
     void start()
     {
@@ -250,7 +272,7 @@ void RemoteAudioDestinationManager::deref() const
     m_gpuConnectionToWebProcess.get()->deref();
 }
 
-void RemoteAudioDestinationManager::createAudioDestination(RemoteAudioDestinationIdentifier identifier, const String& inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore&& renderSemaphore, WebCore::SharedMemory::Handle&& handle, CompletionHandler<void(uint64_t)>&& completionHandler)
+void RemoteAudioDestinationManager::createAudioDestination(RemoteAudioDestinationIdentifier identifier, const String& inputDeviceId, uint32_t numberOfInputChannels, uint32_t numberOfOutputChannels, float sampleRate, float hardwareSampleRate, IPC::Semaphore&& renderSemaphore, WebCore::SharedMemory::Handle&& handle, const String& outputDeviceId, bool isSilent, CompletionHandler<void(uint64_t)>&& completionHandler)
 {
     auto connection = m_gpuConnectionToWebProcess.get();
     if (!connection) {
@@ -259,7 +281,10 @@ void RemoteAudioDestinationManager::createAudioDestination(RemoteAudioDestinatio
     }
     MESSAGE_CHECK(!connection->isLockdownModeEnabled(), "Received a createAudioDestination() message from a webpage in Lockdown mode.");
 
-    auto destination = makeUniqueRef<RemoteAudioDestination>(*connection, inputDeviceId, numberOfInputChannels, numberOfOutputChannels, sampleRate, hardwareSampleRate, WTF::move(renderSemaphore));
+    auto sharedPreferences = connection->sharedPreferencesForWebProcess();
+    MESSAGE_CHECK((outputDeviceId.isEmpty() && !isSilent) || (sharedPreferences && sharedPreferences->audioContextSetSinkIdEnabled), "Received a createAudioDestination() message with output device routing while AudioContext.setSinkId() is disabled.");
+
+    auto destination = makeUniqueRef<RemoteAudioDestination>(*connection, inputDeviceId, numberOfInputChannels, numberOfOutputChannels, sampleRate, hardwareSampleRate, WTF::move(renderSemaphore), outputDeviceId, isSilent);
 #if PLATFORM(COCOA)
     destination->setSharedMemory(WTF::move(handle));
 #else
@@ -267,7 +292,6 @@ void RemoteAudioDestinationManager::createAudioDestination(RemoteAudioDestinatio
 #endif
 
 #if HAVE(SPATIAL_AUDIO_EXPERIENCE)
-    auto sharedPreferences = connection->sharedPreferencesForWebProcess();
     destination->setPrefersSpatialAudioExperience(sharedPreferences && sharedPreferences->preferSpatialAudioExperience);
 #endif
 
@@ -320,6 +344,19 @@ void RemoteAudioDestinationManager::stopAudioDestination(RemoteAudioDestinationI
         isPlaying = item->isPlaying();
     }
     completionHandler(isPlaying);
+}
+
+void RemoteAudioDestinationManager::setSinkId(RemoteAudioDestinationIdentifier identifier, const String& persistentDeviceId, bool isSilent, CompletionHandler<void(bool)>&& completionHandler)
+{
+    auto connection = m_gpuConnectionToWebProcess.get();
+    if (!connection)
+        return completionHandler(false);
+    MESSAGE_CHECK_COMPLETION(!connection->isLockdownModeEnabled(), completionHandler(false));
+
+    bool success = false;
+    if (auto* item = m_audioDestinations.get(identifier))
+        success = item->setSinkId(persistentDeviceId, isSilent);
+    completionHandler(success);
 }
 
 #if PLATFORM(COCOA)

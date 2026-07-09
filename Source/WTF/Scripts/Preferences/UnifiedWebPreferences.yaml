@@ -757,7 +757,7 @@ AttachmentWideLayoutEnabled:
 
 AudioContextSetSinkIdEnabled:
   type: bool
-  status: testable
+  status: stable
   category: media
   humanReadableName: "AudioContext setSinkId"
   humanReadableDescription: "Enable AudioContext.setSinkId() for audio output device selection"
@@ -766,7 +766,7 @@ AudioContextSetSinkIdEnabled:
     WebKitLegacy:
       default: false
     WebKit:
-      default: false
+      default: true
     WebCore:
       default: false
   sharedPreferenceForWebProcess: true
@@ -8050,7 +8050,7 @@ SpeakerSelectionRequiresUserGesture:
     WebKitLegacy:
       default: true
     WebKit:
-      default: true
+      default: false
     WebCore:
       default: true
 
